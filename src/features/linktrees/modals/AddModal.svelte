@@ -1,0 +1,5 @@
+<script>
+ let { onClose, onSave } = $props(); let title=$state(''); let type=$state('public'); let description=$state('');
+ async function submit(e){e.preventDefault();if(!title.trim())return;await onSave({title:title.trim(),type,description:description.trim()});}
+</script>
+<form class="space-y-4" onsubmit={submit}><label class="block text-sm font-bold">Judul<input class="field mt-2" bind:value={title} required placeholder="Contoh: Tautan Karina"/></label><label class="block text-sm font-bold">Visibilitas<select class="field mt-2" bind:value={type}><option value="public">Publik</option><option value="unlisted">Tidak terdaftar</option><option value="private">Privat</option></select></label><label class="block text-sm font-bold">Deskripsi<textarea class="field mt-2" rows="3" bind:value={description} placeholder="Ceritakan isi kumpulan tautan ini"/></label><div class="flex justify-end gap-2"><button type="button" class="btn btn-muted" onclick={onClose}>Batal</button><button class="btn btn-primary">Buat Link Tree</button></div></form>

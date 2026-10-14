@@ -1,0 +1,14 @@
+<script>
+ import { onMount } from 'svelte'; import { getMyProfile, updateMyProfile, uploadProfilePhoto, changePassword } from './usersApi.js'; import { showErrorDialog, showSuccessDialog } from '../../helpers/toolsHelper.js';
+ let profile=$state({name:'',email:''}); let loading=$state(true); let saving=$state(false); let oldPassword=$state(''); let newPassword=$state(''); let photo=$state(null);
+ onMount(async()=>{try{const r=await getMyProfile();profile=r.data?.user||r.data?.profile||r.data||profile}catch(e){await showErrorDialog(e.message)}finally{loading=false}});
+ async function save(e){e.preventDefault();saving=true;try{await updateMyProfile({name:profile.name,email:profile.email});await showSuccessDialog('Profil berhasil diperbarui.')}catch(e){await showErrorDialog(e.message)}finally{saving=false}}
+ async function upload(){if(!photo)return;try{await uploadProfilePhoto(photo);await showSuccessDialog('Foto profil berhasil diunggah.')}catch(e){await showErrorDialog(e.message)}}
+ async function password(){if(oldPassword.length===0||newPassword.length<6){await showErrorDialog('Isi kata sandi lama dan kata sandi baru minimal 6 karakter.');return}try{await changePassword(oldPassword,newPassword);oldPassword='';newPassword='';await showSuccessDialog('Kata sandi berhasil diubah.')}catch(e){await showErrorDialog(e.message)}}
+</script>
+<h1 class="mb-2 text-3xl font-extrabold">Profil Saya</h1><p class="mb-6 text-slate-500">Kelola informasi akun dan keamananmu.</p>
+{#if loading}<div class="panel p-6">Memuat profil...</div>{:else}
+<div class="grid gap-5 lg:grid-cols-2">
+<section class="panel p-6"><h2 class="mb-4 text-xl font-extrabold">Informasi profil</h2><form class="space-y-4" onsubmit={save}><label class="block text-sm font-bold">Nama<input class="field mt-2" bind:value={profile.name} required/></label><label class="block text-sm font-bold">Email<input class="field mt-2" type="email" bind:value={profile.email} required/></label><button class="btn btn-primary" disabled={saving}>Simpan profil</button></form><hr class="my-6 border-slate-100"/><label class="block text-sm font-bold">Foto profil<input class="field mt-2" type="file" accept="image/*" onchange={(e)=>photo=e.currentTarget.files?.[0]||null}/></label><button class="btn btn-muted mt-3" onclick={upload} disabled={!photo}>Unggah foto</button></section>
+<section class="panel p-6"><h2 class="mb-4 text-xl font-extrabold">Ubah kata sandi</h2><div class="space-y-4"><label class="block text-sm font-bold">Kata sandi lama<input class="field mt-2" type="password" bind:value={oldPassword}/></label><label class="block text-sm font-bold">Kata sandi baru<input class="field mt-2" type="password" bind:value={newPassword}/></label><button class="btn btn-primary" onclick={password}>Ubah kata sandi</button></div></section>
+</div>{/if}

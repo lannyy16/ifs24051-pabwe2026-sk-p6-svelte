@@ -1,0 +1,5 @@
+<script>
+ let { item = null, onClose, onSave } = $props(); let title=$state(item?.title||''); let url=$state(item?.url||''); let description=$state(item?.description||'');
+ async function submit(e){e.preventDefault();try{new URL(url)}catch{return}if(!title.trim())return;await onSave({title:title.trim(),url:url.trim(),description:description.trim()})}
+</script>
+<form class="space-y-4" onsubmit={submit}><label class="block text-sm font-bold">Nama tautan<input class="field mt-2" bind:value={title} required placeholder="Portofolio"/></label><label class="block text-sm font-bold">URL<input class="field mt-2" type="url" bind:value={url} required placeholder="https://example.com"/></label><label class="block text-sm font-bold">Deskripsi (opsional)<textarea class="field mt-2" rows="2" bind:value={description}/></label><div class="flex justify-end gap-2"><button type="button" class="btn btn-muted" onclick={onClose}>Batal</button><button class="btn btn-primary">Simpan tautan</button></div></form>
