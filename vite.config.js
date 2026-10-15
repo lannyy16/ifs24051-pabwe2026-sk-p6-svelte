@@ -1,4 +1,3 @@
-
 import { defineConfig } from 'vitest/config';
 import { loadEnv } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
@@ -26,11 +25,14 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/setupTests.js'],
+      fileParallelism: false,
+
       server: {
         deps: {
           inline: ['svelte'],
         },
       },
+
       coverage: {
         provider: 'v8',
         include: ['src/**/*.js'],
@@ -39,6 +41,7 @@ export default defineConfig(({ mode }) => {
           'src/setupTests.js',
           'src/**/*.test.js',
         ],
+
         thresholds: {
           statements: 100,
           branches: 100,
