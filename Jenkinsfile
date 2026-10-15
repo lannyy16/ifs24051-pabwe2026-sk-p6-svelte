@@ -1,28 +1,64 @@
 pipeline {
     agent any
 
+    environment {
+        BUN_INSTALL = "${HOME}/.bun"
+        NODE_VERSION = "22.21.1"
+    }
+
     stages {
-        stage('Setup Bun') {
+        stage('Setup Tools') {
             steps {
                 sh '''
                     set -eu
 
-                    export BUN_INSTALL="$HOME/.bun"
                     export PATH="$BUN_INSTALL/bin:$PATH"
 
-                    if ! command -v bun >/dev/null 2>&1; then
-                        curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.2"
-                    fi
-
-                    echo "Bun version:"
+                    echo "=== Setup Bun ==="
                     bun --version
 
-                    echo "Node.js version:"
-                    node --version
+                    echo "=== Setup Node.js ==="
+                    NODE_DIR="$HOME/.local/node-v$NODE_VERSION"
 
-                    echo "npm version:"
+                    if [ ! -x "$NODE_DIR/bin/node" ]; then
+                        mkdir -p "$HOME/.local"
+
+                        ARCH="$(uname -m)"
+                        case "$ARCH" in
+                            x86_64) NODE_ARCH="x64" ;;
+                            aarch64|arm64) NODE_ARCH="arm64" ;;
+                            *)
+                                echo "Unsupported architecture: $ARCH"
+                                exit 1
+                                ;;
+                        esac
+
+                        TARBALL="node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz"
+                        URL="https://nodejs.org/dist/v${NODE_VERSION}/${TARBALL}"
+
+                        curl -fsSL "$URL" -o "/tmp/$TARBALL"
+                        mkdir -p "$NODE_DIR"
+                        tar -xJf "/tmp/$TARBALL" \
+                            --strip-components=1 \
+                            -C "$NODE_DIR"
+                        rm -f "/tmp/$TARBALL"
+                    fi
+
+                    echo "NODE_DIR=$NODE_DIR" > node-env.txt
+                    export PATH="$NODE_DIR/bin:$PATH"
+
+                    node --version
                     npm --version
                 '''
+
+                script {
+                    def nodeDir = sh(
+                        script: "cat node-env.txt",
+                        returnStdout: true
+                    ).trim().replace('NODE_DIR=', '')
+
+                    env.NODE_DIR = nodeDir
+                }
             }
         }
 
@@ -30,9 +66,7 @@ pipeline {
             steps {
                 sh '''
                     set -eu
-
-                    export BUN_INSTALL="$HOME/.bun"
-                    export PATH="$BUN_INSTALL/bin:$PATH"
+                    export PATH="$NODE_DIR/bin:$BUN_INSTALL/bin:$PATH"
 
                     bun install --frozen-lockfile
                 '''
@@ -43,8 +77,8 @@ pipeline {
             steps {
                 sh '''
                     set -eu
+                    export PATH="$NODE_DIR/bin:$PATH"
 
-                    echo "Running Vitest with Node.js..."
                     node ./node_modules/vitest/vitest.mjs run
                 '''
             }
@@ -54,8 +88,8 @@ pipeline {
             steps {
                 sh '''
                     set -eu
+                    export PATH="$NODE_DIR/bin:$PATH"
 
-                    echo "Building Svelte application with Vite..."
                     node ./node_modules/vite/bin/vite.js build
                 '''
             }
