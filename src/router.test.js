@@ -1,11 +1,22 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+} from 'vitest';
+
 import { get } from 'svelte/store';
-import { currentPath, navigate, resolveRoute } from './router';
+import {
+  currentPath,
+  navigate,
+  resolveRoute,
+} from './router.js';
 
 describe('router.js', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/');
-    currentPath.set('/');
     window.scrollTo = vi.fn();
   });
 
@@ -13,71 +24,47 @@ describe('router.js', () => {
     vi.restoreAllMocks();
   });
 
-  describe('currentPath', () => {
-    it('memiliki nilai awal berupa string', () => {
-      expect(typeof get(currentPath)).toBe('string');
-    });
-  });
-
-  describe('navigate', () => {
-    it('mengubah path menggunakan pushState', () => {
-      navigate('/dashboard');
-
-      expect(window.location.pathname).toBe('/dashboard');
-      expect(get(currentPath)).toBe('/dashboard');
-      expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+  describe('resolveRoute()', () => {
+    it('mengembalikan halaman login', () => {
+      expect(resolveRoute('/auth/login')).toEqual({
+        layout: 'auth',
+        page: 'login',
+      });
     });
 
-    it('mengubah path menggunakan replaceState', () => {
-      const replaceSpy = vi.spyOn(window.history, 'replaceState');
-
-      navigate('/profile', { replace: true });
-
-      expect(replaceSpy).toHaveBeenCalledWith({}, '', '/profile');
-      expect(get(currentPath)).toBe('/profile');
+    it('mengembalikan halaman register', () => {
+      expect(resolveRoute('/auth/register')).toEqual({
+        layout: 'auth',
+        page: 'register',
+      });
     });
 
-    it('menggunakan pushState jika options kosong', () => {
-      const pushSpy = vi.spyOn(window.history, 'pushState');
-
-      navigate('/users', {});
-
-      expect(pushSpy).toHaveBeenCalledWith({}, '', '/users');
-      expect(get(currentPath)).toBe('/users');
+    it('mengembalikan halaman home', () => {
+      expect(resolveRoute('/')).toEqual({
+        layout: 'app',
+        page: 'home',
+      });
     });
 
-    it('menggunakan pushState jika replace bernilai false', () => {
-      const pushSpy = vi.spyOn(window.history, 'pushState');
-      const replaceSpy = vi.spyOn(window.history, 'replaceState');
-
-      navigate('/profile', { replace: false });
-
-      expect(pushSpy).toHaveBeenCalledWith({}, '', '/profile');
-      expect(replaceSpy).not.toHaveBeenCalled();
+    it('menangani slash di akhir path', () => {
+      expect(resolveRoute('///')).toEqual({
+        layout: 'app',
+        page: 'home',
+      });
     });
 
-    it('menyimpan query string pada currentPath', () => {
-      navigate('/users?page=2');
-
-      expect(get(currentPath)).toBe('/users?page=2');
+    it('mengembalikan halaman users', () => {
+      expect(resolveRoute('/users')).toEqual({
+        layout: 'app',
+        page: 'users',
+      });
     });
 
-    it('mengatur scroll ke posisi awal', () => {
-      navigate('/dashboard');
-
-      expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
-    });
-  });
-
-  describe('resolveRoute', () => {
-    it.each([
-      ['/auth/login', { layout: 'auth', page: 'login' }],
-      ['/auth/register', { layout: 'auth', page: 'register' }],
-      ['/', { layout: 'app', page: 'home' }],
-      ['/users', { layout: 'app', page: 'users' }],
-      ['/profile', { layout: 'app', page: 'profile' }],
-    ])('memetakan route %s', (path, expected) => {
-      expect(resolveRoute(path)).toEqual(expected);
+    it('mengembalikan halaman profile', () => {
+      expect(resolveRoute('/profile')).toEqual({
+        layout: 'app',
+        page: 'profile',
+      });
     });
 
     it('mengabaikan query string', () => {
@@ -87,35 +74,14 @@ describe('router.js', () => {
       });
     });
 
-    it('menghapus trailing slash', () => {
+    it('mengabaikan slash terakhir', () => {
       expect(resolveRoute('/users/')).toEqual({
         layout: 'app',
         page: 'users',
       });
     });
 
-    it('menghapus beberapa trailing slash', () => {
-      expect(resolveRoute('/users///')).toEqual({
-        layout: 'app',
-        page: 'users',
-      });
-    });
-
-    it('menggunakan home untuk path kosong', () => {
-      expect(resolveRoute('')).toEqual({
-        layout: 'app',
-        page: 'home',
-      });
-    });
-
-    it('menggunakan home untuk null', () => {
-      expect(resolveRoute(null)).toEqual({
-        layout: 'app',
-        page: 'home',
-      });
-    });
-
-    it('memetakan link tree detail', () => {
+    it('mengembalikan detail link tree', () => {
       expect(resolveRoute('/link-trees/123')).toEqual({
         layout: 'app',
         page: 'detail',
@@ -131,34 +97,140 @@ describe('router.js', () => {
       });
     });
 
-    it('mengembalikan not-found untuk route yang tidak dikenal', () => {
+    it('mengembalikan not-found untuk route tidak dikenal', () => {
       expect(resolveRoute('/route-tidak-ada')).toEqual({
         layout: 'none',
         page: 'not-found',
       });
     });
 
-    it('mengembalikan not-found untuk nested detail route', () => {
-      expect(resolveRoute('/link-trees/123/edit')).toEqual({
+    it.each(['', null, undefined])(
+      'menggunakan halaman home untuk path %s',
+      (path) => {
+        expect(resolveRoute(path)).toEqual({
+          layout: 'app',
+          page: 'home',
+        });
+      },
+    );
+
+    it('mengembalikan not-found jika ID link tree kosong', () => {
+      expect(resolveRoute('/link-trees/')).toEqual({
+        layout: 'none',
+        page: 'not-found',
+      });
+    });
+
+    it('mengembalikan not-found untuk nested route', () => {
+      expect(resolveRoute('/link-trees/123/items')).toEqual({
         layout: 'none',
         page: 'not-found',
       });
     });
   });
 
-  describe('popstate', () => {
-    it('memperbarui currentPath saat popstate terjadi', () => {
-      window.history.pushState({}, '', '/profile');
-      window.dispatchEvent(new PopStateEvent('popstate'));
+  describe('navigate()', () => {
+    it('melakukan navigasi dengan pushState', () => {
+      const spy = vi.spyOn(window.history, 'pushState');
 
+      navigate('/users');
+
+      expect(spy).toHaveBeenCalledWith({}, '', '/users');
+      expect(window.location.pathname).toBe('/users');
+      expect(get(currentPath)).toBe('/users');
+    });
+
+    it('melakukan navigasi dengan replaceState', () => {
+      const spy = vi.spyOn(window.history, 'replaceState');
+
+      navigate('/profile', { replace: true });
+
+      expect(spy).toHaveBeenCalledWith({}, '', '/profile');
       expect(get(currentPath)).toBe('/profile');
     });
 
-    it('memperbarui currentPath beserta query string', () => {
-      window.history.pushState({}, '', '/users?page=3');
+    it('menggunakan pushState jika replace false', () => {
+      const spy = vi.spyOn(window.history, 'pushState');
+
+      navigate('/users', { replace: false });
+
+      expect(spy).toHaveBeenCalledWith({}, '', '/users');
+    });
+
+    it('mempertahankan query string', () => {
+      navigate('/users?page=2');
+
+      expect(get(currentPath)).toBe('/users?page=2');
+      expect(window.location.search).toBe('?page=2');
+    });
+
+    it('memanggil scrollTo setelah navigasi', () => {
+      navigate('/profile');
+
+      expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+    });
+
+    it('tetap bernavigasi ketika scrollTo tidak tersedia', () => {
+      window.scrollTo = undefined;
+
+      expect(() => navigate('/profile')).not.toThrow();
+      expect(get(currentPath)).toBe('/profile');
+    });
+
+    it('menggunakan pushState jika options tidak diberikan', () => {
+      const spy = vi.spyOn(window.history, 'pushState');
+
+      navigate('/users');
+
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
+  describe('popstate event', () => {
+    it('memperbarui currentPath ketika popstate terjadi', () => {
+      window.history.pushState({}, '', '/users');
       window.dispatchEvent(new PopStateEvent('popstate'));
 
-      expect(get(currentPath)).toBe('/users?page=3');
+      expect(get(currentPath)).toBe('/users');
     });
+
+    it('memperbarui currentPath dengan query string', () => {
+      window.history.pushState({}, '', '/profile?tab=settings');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+
+      expect(get(currentPath)).toBe('/profile?tab=settings');
+    });
+  });
+});
+
+describe('router.js dalam lingkungan Node', () => {
+  it('menginisialisasi currentPath tanpa window', async () => {
+    vi.resetModules();
+    vi.stubGlobal('window', undefined);
+
+    try {
+      const { currentPath } = await import('./router.js');
+
+      expect(get(currentPath)).toBe('/');
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
+  });
+
+  it('melakukan navigasi tanpa window', async () => {
+    vi.resetModules();
+    vi.stubGlobal('window', undefined);
+
+    try {
+      const { currentPath, navigate } = await import('./router.js');
+
+      navigate('/server-route');
+
+      expect(get(currentPath)).toBe('/server-route');
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
   });
 });

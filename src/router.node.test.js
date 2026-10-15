@@ -21,4 +21,14 @@ describe('router.js dalam lingkungan Node', () => {
 
     expect(get(currentPath)).toBe('/server-route');
   });
+
+  it('menangani navigasi dengan query tanpa window', async () => {
+    vi.resetModules();
+
+    const { currentPath, navigate } = await import('./router.js');
+
+    navigate('/server-route?page=2');
+
+    expect(get(currentPath)).toBe('/server-route?page=2');
+  });
 });
