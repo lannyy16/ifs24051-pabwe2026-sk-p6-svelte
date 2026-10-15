@@ -26,5 +26,13 @@ pipeline {
                 bat 'bun run build'
             }
         }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    bat 'sonar-scanner'
+                }
+            }
+        }
     }
 }
