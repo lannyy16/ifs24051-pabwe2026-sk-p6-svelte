@@ -32,31 +32,28 @@ pipeline {
             }
         }
 
-        stage('Run Tests') {
-            steps {
-                sh '''
-                    set -eu
+        
+stage('Run Tests') {
+    steps {
+        sh '''
+            set -eu
+            node --version
+            node ./node_modules/vitest/vitest.mjs run
+        '''
+    }
+}
 
-                    export BUN_INSTALL="$HOME/.bun"
-                    export PATH="$BUN_INSTALL/bin:$PATH"
+        
+stage('Build') {
+    steps {
+        sh '''
+            set -eu
+            node --version
+            node ./node_modules/vite/bin/vite.js build
+        '''
+    }
+}
 
-                    bun run test
-                '''
-            }
-        }
-
-        stage('Build') {
-            steps {
-                sh '''
-                    set -eu
-
-                    export BUN_INSTALL="$HOME/.bun"
-                    export PATH="$BUN_INSTALL/bin:$PATH"
-
-                    bun run build
-                '''
-            }
-        }
 
         stage('SonarQube Analysis') {
             steps {
