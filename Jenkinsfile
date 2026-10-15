@@ -1,29 +1,48 @@
-
-pipeline {
+﻿pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
+        stage('Setup Bun') {
             steps {
-                checkout scm
+                sh '''
+                    set -e
+                    if ! command -v bun >/dev/null 2>&1; then
+                        curl -fsSL https://bun.sh/install | bash
+                    fi
+                    export BUN_INSTALL="$HOME/.bun"
+                    export PATH="$BUN_INSTALL/bin:$PATH"
+                    bun --version
+                '''
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'bun install'
+                sh '''
+                    export BUN_INSTALL="$HOME/.bun"
+                    export PATH="$BUN_INSTALL/bin:$PATH"
+                    bun install
+                '''
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'bun run test'
+                sh '''
+                    export BUN_INSTALL="$HOME/.bun"
+                    export PATH="$BUN_INSTALL/bin:$PATH"
+                    bun run test
+                '''
             }
         }
 
         stage('Build') {
             steps {
-                sh 'bun run build'
+                sh '''
+                    export BUN_INSTALL="$HOME/.bun"
+                    export PATH="$BUN_INSTALL/bin:$PATH"
+                    bun run build
+                '''
             }
         }
 
