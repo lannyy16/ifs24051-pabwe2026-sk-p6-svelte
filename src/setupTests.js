@@ -1,9 +1,11 @@
+
 import '@testing-library/jest-dom/vitest';
 
 // Mock API browser yang tidak tersedia secara default di jsdom.
-// Lindungi akses window agar aman jika file ini dijalankan di Node.
-if (typeof window !== 'undefined') {
-  Object.defineProperty(window, 'matchMedia', {
+const browserWindow = globalThis.window;
+
+if (browserWindow) {
+  Object.defineProperty(browserWindow, 'matchMedia', {
     writable: true,
     configurable: true,
     value: (query) => ({
