@@ -11,26 +11,26 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                bat 'bun install'
+                sh 'bun install'
             }
         }
 
         stage('Run Tests') {
             steps {
-                bat 'bun run test'
+                sh 'bun run test'
             }
         }
 
         stage('Build') {
             steps {
-                bat 'bun run build'
+                sh 'bun run build'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    bat 'sonar-scanner'
+                    sh 'sonar-scanner'
                 }
             }
         }
