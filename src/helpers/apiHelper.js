@@ -4,29 +4,43 @@ const BASE_URL =
   'https://open-api.delcom.org/api/v1';
 
 export function getToken() {
-  return typeof globalThis.localStorage === 'undefined'
-    ? ''
-    : globalThis.localStorage.getItem('token') || '';
+  const storage = globalThis.localStorage;
+
+  if (storage === undefined) {
+    return '';
+  }
+
+  return storage.getItem('token') || '';
 }
 
 export function setToken(token) {
-  if (typeof globalThis.localStorage !== 'undefined') {
-    if (token) {
-      globalThis.localStorage.setItem('token', token);
-    } else {
-      globalThis.localStorage.removeItem('token');
-    }
+  const storage = globalThis.localStorage;
+
+  if (storage === undefined) {
+    return;
+  }
+
+  if (token) {
+    storage.setItem('token', token);
+  } else {
+    storage.removeItem('token');
   }
 }
 
 export function buildUrl(path, query = {}) {
+  const origin = globalThis.window?.location?.origin;
+
   const url = new URL(
     `${BASE_URL}${path}`,
-    globalThis.window.location.origin
+    origin || 'http://localhost'
   );
 
   Object.entries(query || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ''
+    ) {
       url.searchParams.set(key, String(value));
     }
   });
@@ -55,7 +69,7 @@ export async function apiRequest(path, options = {}) {
   let requestBody = body;
 
   if (body instanceof FormData) {
-    // Browser mengatur multipart boundary secara otomatis.
+    // Browser akan mengatur multipart boundary secara otomatis.
   } else if (body !== undefined) {
     requestHeaders['Content-Type'] = 'application/json';
     requestBody = JSON.stringify(body);
