@@ -8,7 +8,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    plugins: [tailwindcss(), svelte()],
+    plugins: [
+      tailwindcss(),
+      svelte(),
+    ],
 
     resolve: {
       conditions: ['browser'],
@@ -25,7 +28,9 @@ export default defineConfig(({ mode }) => {
 
     test: {
       environment: 'jsdom',
+
       setupFiles: ['./src/setupTests.js'],
+
       fileParallelism: false,
 
       server: {
@@ -37,7 +42,16 @@ export default defineConfig(({ mode }) => {
       coverage: {
         provider: 'v8',
 
-        include: ['src/**/*.js'],
+        reporter: [
+          'text',
+          'html',
+          'lcov',
+          'json',
+        ],
+
+        include: [
+          'src/**/*.js',
+        ],
 
         exclude: [
           'src/main.js',
@@ -45,10 +59,6 @@ export default defineConfig(({ mode }) => {
           'src/**/*.test.js',
         ],
 
-        // Laporan untuk terminal, HTML, dan SonarQube.
-        reporter: ['text', 'html', 'lcov'],
-
-        // Pertahankan target coverage yang sudah ada.
         thresholds: {
           statements: 100,
           branches: 100,

@@ -1,4 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+} from 'vitest';
+
 import {
   getToken,
   setToken,
@@ -7,11 +16,11 @@ import {
   apiGet,
   apiPost,
   apiPut,
-  apiDelete
+  apiDelete,
 } from './apiHelper';
 
 // ==========================================
-// 1. TEST BASE_URL
+// 1. BASE_URL
 // ==========================================
 describe('BASE_URL - Environment Variable', () => {
   afterEach(() => {
@@ -19,251 +28,464 @@ describe('BASE_URL - Environment Variable', () => {
     vi.resetModules();
   });
 
-  it('harus menggunakan VITE_DELCOM_BASEURL jika diset', async () => {
-    vi.resetModules();
+  it('menggunakan URL custom dari environment', async () => {
     vi.stubEnv('VITE_DELCOM_BASEURL', 'https://api.custom.com/v2');
-    const { buildUrl } = await import('./apiHelper');
-    const url = buildUrl('/users');
-    expect(url).toContain('https://api.custom.com/v2/users');
+    vi.resetModules();
+
+    const { buildUrl: buildCustomUrl } = await import('./apiHelper');
+
+    expect(buildCustomUrl('/users')).toContain(
+      'https://api.custom.com/v2/users',
+    );
   });
 
-  it('harus menggunakan URL default jika VITE_DELCOM_BASEURL kosong', async () => {
-    vi.resetModules();
+  it('menggunakan URL default jika environment kosong', async () => {
     vi.stubEnv('VITE_DELCOM_BASEURL', '');
-    const { buildUrl } = await import('./apiHelper');
-    const url = buildUrl('/users');
-    expect(url).toContain('https://open-api.delcom.org/api/v1/users');
+    vi.resetModules();
+
+    const { buildUrl: buildDefaultUrl } = await import('./apiHelper');
+
+    expect(buildDefaultUrl('/users')).toContain(
+      'https://open-api.delcom.org/api/v1/users',
+    );
   });
 });
 
 // ==========================================
-// 2. TEST buildUrl
+// 2. buildUrl
 // ==========================================
 describe('buildUrl', () => {
-  it('harus menambahkan query params dengan benar', () => {
-    const url = buildUrl('/users', { page: 1, search: 'budi', empty: '', nil: null, undef: undefined });
-    expect(url).toContain('page=1');
-    expect(url).toContain('search=budi');
-    expect(url).not.toContain('empty=');
-    expect(url).not.toContain('nil=');
-    expect(url).not.toContain('undef=');
+  it('membuat URL dengan path', () => {
+    expect(buildUrl('/users')).toContain('/users');
   });
 
-  it('harus menangani jika query tidak diberikan', () => {
-    const url = buildUrl('/users');
-    expect(url).toContain('/users');
+  it('menambahkan query parameter', () => {
+    const url = new URL(
+      buildUrl('/users', {
+        page: 1,
+        search: 'karina',
+      }),
+    );
+
+    expect(url.searchParams.get('page')).toBe('1');
+    expect(url.searchParams.get('search')).toBe('karina');
   });
 
-  it('harus menangani query null', () => {
-    const url = buildUrl('/users', null);
-    expect(url).toContain('/users');
+  it('mengabaikan query kosong, null, dan undefined', () => {
+    const url = new URL(
+      buildUrl('/users', {
+        empty: '',
+        nil: null,
+        missing: undefined,
+        page: 1,
+      }),
+    );
+
+    expect(url.searchParams.has('empty')).toBe(false);
+    expect(url.searchParams.has('nil')).toBe(false);
+    expect(url.searchParams.has('missing')).toBe(false);
+    expect(url.searchParams.get('page')).toBe('1');
+  });
+
+  it('menangani query null', () => {
+    expect(buildUrl('/users', null)).toContain('/users');
+  });
+
+  it('mengubah nilai query menjadi string', () => {
+    const url = new URL(
+      buildUrl('/users', {
+        active: false,
+        count: 0,
+      }),
+    );
+
+    expect(url.searchParams.get('active')).toBe('false');
+    expect(url.searchParams.get('count')).toBe('0');
+  });
+
+  it('menggunakan fallback saat window tidak tersedia', () => {
+    const originalWindow = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'window',
+    );
+
+    try {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: undefined,
+      });
+
+      const url = buildUrl('/users');
+
+      // BASE_URL adalah URL absolut, sehingga URL API tetap digunakan.
+      expect(url).toContain(
+        'https://open-api.delcom.org/api/v1/users',
+      );
+    } finally {
+      if (originalWindow) {
+        Object.defineProperty(
+          globalThis,
+          'window',
+          originalWindow,
+        );
+      }
+    }
   });
 });
 
 // ==========================================
-// 3. TEST Token Management
+// 3. TOKEN MANAGEMENT
 // ==========================================
 describe('Token Management', () => {
   beforeEach(() => {
-    if (typeof localStorage !== 'undefined') localStorage.clear();
+    localStorage.clear();
   });
 
-  it('getToken harus mengembalikan token jika ada', () => {
+  it('mengambil token yang tersimpan', () => {
     localStorage.setItem('token', 'abc-123');
+
     expect(getToken()).toBe('abc-123');
   });
 
-  it('getToken harus mengembalikan string kosong jika token tidak ada', () => {
+  it('mengembalikan string kosong jika token tidak tersedia', () => {
     expect(getToken()).toBe('');
   });
 
-  it('getToken harus mengembalikan string kosong jika localStorage undefined', () => {
-    const originalLocalStorage = global.localStorage;
-    // @ts-ignore
-    delete global.localStorage;
-    // @ts-ignore
-    delete globalThis.localStorage;
+  it('mengembalikan string kosong jika localStorage tidak tersedia', () => {
+    const originalStorage = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'localStorage',
+    );
 
-    expect(getToken()).toBe('');
+    try {
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: undefined,
+      });
 
-    global.localStorage = originalLocalStorage;
-    globalThis.localStorage = originalLocalStorage;
+      expect(getToken()).toBe('');
+    } finally {
+      if (originalStorage) {
+        Object.defineProperty(
+          globalThis,
+          'localStorage',
+          originalStorage,
+        );
+      }
+    }
   });
 
-  it('setToken harus menyimpan token', () => {
+  it('menyimpan token', () => {
     setToken('new-token');
+
     expect(localStorage.getItem('token')).toBe('new-token');
   });
 
-  it('setToken harus menghapus token jika falsy', () => {
+  it('menghapus token jika nilainya kosong', () => {
     localStorage.setItem('token', 'old-token');
+
     setToken('');
+
     expect(localStorage.getItem('token')).toBeNull();
   });
 
-  it('setToken harus tidak error jika localStorage undefined', () => {
-    const originalLocalStorage = global.localStorage;
-    // @ts-ignore
-    delete global.localStorage;
-    // @ts-ignore
-    delete globalThis.localStorage;
+  it('tidak error jika localStorage tidak tersedia saat menyimpan', () => {
+    const originalStorage = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'localStorage',
+    );
 
-    expect(() => setToken('test')).not.toThrow();
+    try {
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: undefined,
+      });
 
-    global.localStorage = originalLocalStorage;
-    globalThis.localStorage = originalLocalStorage;
+      expect(() => setToken('test-token')).not.toThrow();
+    } finally {
+      if (originalStorage) {
+        Object.defineProperty(
+          globalThis,
+          'localStorage',
+          originalStorage,
+        );
+      }
+    }
   });
 });
 
 // ==========================================
-// 4. TEST apiRequest
+// 4. apiRequest
 // ==========================================
 describe('apiRequest', () => {
   beforeEach(() => {
-    if (typeof localStorage !== 'undefined') localStorage.clear();
+    localStorage.clear();
+
+    global.fetch = vi.fn();
+  });
+
+  afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('harus melakukan GET request dengan sukses', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'success', data: { id: 1 } })
-    });
-    const result = await apiRequest('/test');
-    expect(result).toEqual({ status: 'success', data: { id: 1 } });
-  });
-
-  it('harus menambahkan Authorization header jika token ada', async () => {
-    localStorage.setItem('token', 'secret-token');
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'success' })
-    });
-    await apiRequest('/test');
-    const fetchArgs = global.fetch.mock.calls[0][1];
-    expect(fetchArgs.headers.Authorization).toBe('Bearer secret-token');
-  });
-
-  it('harus TIDAK menambahkan Authorization header jika token kosong', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'success' })
-    });
-    await apiRequest('/test');
-    const fetchArgs = global.fetch.mock.calls[0][1];
-    expect(fetchArgs.headers.Authorization).toBeUndefined();
-  });
-
-  it('harus menangani body FormData', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'success' })
-    });
-    const formData = new FormData();
-    await apiRequest('/upload', { method: 'POST', body: formData });
-    const fetchArgs = global.fetch.mock.calls[0][1];
-    expect(fetchArgs.headers['Content-Type']).toBeUndefined();
-    expect(fetchArgs.body).toBe(formData);
-  });
-
-  it('harus menangani body JSON', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'success' })
-    });
-    const jsonBody = { name: 'Budi' };
-    await apiRequest('/users', { method: 'POST', body: jsonBody });
-    const fetchArgs = global.fetch.mock.calls[0][1];
-    expect(fetchArgs.headers['Content-Type']).toBe('application/json');
-    expect(fetchArgs.body).toBe(JSON.stringify(jsonBody));
-  });
-
-  it('harus menangani error jika response bukan JSON', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+  it('melakukan GET request dengan sukses', async () => {
+    global.fetch.mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => { throw new Error('Bukan JSON'); }
+      json: async () => ({
+        status: 'success',
+        data: { id: 1 },
+      }),
     });
-    await expect(apiRequest('/test')).rejects.toThrow('Permintaan gagal (200)');
+
+    await expect(apiRequest('/test')).resolves.toEqual({
+      status: 'success',
+      data: { id: 1 },
+    });
   });
 
-  it('harus melempar error dengan pesan dari API', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+  it('menambahkan Authorization jika token tersedia', async () => {
+    localStorage.setItem('token', 'secret-token');
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success' }),
+    });
+
+    await apiRequest('/test');
+
+    expect(
+      global.fetch.mock.calls[0][1].headers.Authorization,
+    ).toBe('Bearer secret-token');
+  });
+
+  it('tidak menambahkan Authorization jika token kosong', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success' }),
+    });
+
+    await apiRequest('/test');
+
+    expect(
+      global.fetch.mock.calls[0][1].headers.Authorization,
+    ).toBeUndefined();
+  });
+
+  it('mengirim body FormData tanpa Content-Type JSON', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success' }),
+    });
+
+    const formData = new FormData();
+
+    await apiRequest('/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const options = global.fetch.mock.calls[0][1];
+
+    expect(options.body).toBe(formData);
+    expect(options.headers['Content-Type']).toBeUndefined();
+  });
+
+  it('mengubah body biasa menjadi JSON', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success' }),
+    });
+
+    const body = { name: 'Karina' };
+
+    await apiRequest('/users', {
+      method: 'POST',
+      body,
+    });
+
+    const options = global.fetch.mock.calls[0][1];
+
+    expect(options.headers['Content-Type']).toBe('application/json');
+    expect(options.body).toBe(JSON.stringify(body));
+  });
+
+  it('menangani response yang bukan JSON', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new Error('Invalid JSON');
+      },
+    });
+
+    await expect(apiRequest('/test')).rejects.toThrow(
+      'Permintaan gagal (200)',
+    );
+  });
+
+  it('melempar pesan error dari API', async () => {
+    global.fetch.mockResolvedValue({
       ok: false,
       status: 400,
-      json: async () => ({ status: 'error', message: 'Email sudah terdaftar' })
+      json: async () => ({
+        status: 'error',
+        message: 'Email sudah terdaftar',
+      }),
     });
-    await expect(apiRequest('/register')).rejects.toThrow('Email sudah terdaftar');
+
+    await expect(apiRequest('/register')).rejects.toThrow(
+      'Email sudah terdaftar',
+    );
   });
 
-  it('harus melempar error dengan pesan default', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+  it('melempar pesan error default jika pesan API tidak tersedia', async () => {
+    global.fetch.mockResolvedValue({
       ok: false,
       status: 500,
-      json: async () => ({})
+      json: async () => ({}),
     });
-    await expect(apiRequest('/test')).rejects.toThrow('Permintaan gagal (500)');
+
+    await expect(apiRequest('/test')).rejects.toThrow(
+      'Permintaan gagal (500)',
+    );
   });
 
-  it('harus menggunakan GET jika body undefined', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+  it('melempar error jika status payload bukan success', async () => {
+    global.fetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ status: 'success' })
+      status: 200,
+      json: async () => ({
+        status: 'error',
+        message: 'Data tidak valid',
+      }),
     });
+
+    await expect(apiRequest('/test')).rejects.toThrow(
+      'Data tidak valid',
+    );
+  });
+
+  it('menggunakan GET jika body tidak tersedia', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success' }),
+    });
+
     await apiRequest('/test');
-    const fetchArgs = global.fetch.mock.calls[0][1];
-    expect(fetchArgs.method).toBe('GET');
+
+    expect(global.fetch.mock.calls[0][1].method).toBe('GET');
   });
 
-  it('harus menggunakan POST jika body ada', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+  it('menggunakan POST jika body tersedia tanpa method khusus', async () => {
+    global.fetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ status: 'success' })
+      status: 200,
+      json: async () => ({ status: 'success' }),
     });
-    await apiRequest('/test', { body: { name: 'Budi' } });
-    const fetchArgs = global.fetch.mock.calls[0][1];
-    expect(fetchArgs.method).toBe('POST');
+
+    await apiRequest('/test', {
+      body: { name: 'Karina' },
+    });
+
+    expect(global.fetch.mock.calls[0][1].method).toBe('POST');
   });
 
-  it('harus menggunakan method yang ditentukan user', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+  it('memprioritaskan method yang ditentukan pengguna', async () => {
+    global.fetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ status: 'success' })
+      status: 200,
+      json: async () => ({ status: 'success' }),
     });
-    await apiRequest('/test', { method: 'PATCH' });
-    const fetchArgs = global.fetch.mock.calls[0][1];
-    expect(fetchArgs.method).toBe('PATCH');
+
+    await apiRequest('/test', {
+      method: 'PATCH',
+    });
+
+    expect(global.fetch.mock.calls[0][1].method).toBe('PATCH');
+  });
+
+  it('mempertahankan header tambahan', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success' }),
+    });
+
+    await apiRequest('/test', {
+      headers: {
+        'X-Test': 'test-value',
+      },
+    });
+
+    expect(
+      global.fetch.mock.calls[0][1].headers['X-Test'],
+    ).toBe('test-value');
+  });
+
+  it('menggunakan token eksplisit yang diberikan', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success' }),
+    });
+
+    await apiRequest('/test', {
+      token: 'explicit-token',
+    });
+
+    expect(
+      global.fetch.mock.calls[0][1].headers.Authorization,
+    ).toBe('Bearer explicit-token');
   });
 });
 
 // ==========================================
-// 5. TEST Shorthand Methods
+// 5. API SHORTHAND METHODS
 // ==========================================
 describe('API Shorthand Methods', () => {
   beforeEach(() => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ status: 'success' })
+      status: 200,
+      json: async () => ({ status: 'success' }),
     });
   });
 
-  it('apiGet harus memakai method GET', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('apiGet menggunakan GET', async () => {
     await apiGet('/test', { page: 1 });
+
     expect(global.fetch.mock.calls[0][1].method).toBe('GET');
+    expect(global.fetch.mock.calls[0][0]).toContain('page=1');
   });
 
-  it('apiPost harus memakai method POST', async () => {
-    await apiPost('/test', { name: 'Budi' });
+  it('apiPost menggunakan POST', async () => {
+    await apiPost('/test', { name: 'Karina' });
+
     expect(global.fetch.mock.calls[0][1].method).toBe('POST');
+    expect(global.fetch.mock.calls[0][1].body).toBe(
+      JSON.stringify({ name: 'Karina' }),
+    );
   });
 
-  it('apiPut harus memakai method PUT', async () => {
-    await apiPut('/test', { name: 'Budi' });
+  it('apiPut menggunakan PUT', async () => {
+    await apiPut('/test', { name: 'Karina' });
+
     expect(global.fetch.mock.calls[0][1].method).toBe('PUT');
   });
 
-  it('apiDelete harus memakai method DELETE', async () => {
+  it('apiDelete menggunakan DELETE', async () => {
     await apiDelete('/test');
+
     expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
   });
 });

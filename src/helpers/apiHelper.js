@@ -22,28 +22,26 @@ export function setToken(token) {
 
   if (token) {
     storage.setItem('token', token);
-  } else {
-    storage.removeItem('token');
+    return;
   }
+
+  storage.removeItem('token');
 }
 
 export function buildUrl(path, query = {}) {
   const origin = globalThis.window?.location?.origin;
-
   const url = new URL(
     `${BASE_URL}${path}`,
     origin || 'http://localhost'
   );
 
-  Object.entries(query || {}).forEach(([key, value]) => {
-    if (
-      value !== undefined &&
-      value !== null &&
-      value !== ''
-    ) {
-      url.searchParams.set(key, String(value));
+  for (const [key, value] of Object.entries(query || {})) {
+    if (value === undefined || value === null || value === '') {
+      continue;
     }
-  });
+
+    url.searchParams.set(key, String(value));
+  }
 
   return url.toString();
 }
@@ -68,9 +66,7 @@ export async function apiRequest(path, options = {}) {
 
   let requestBody = body;
 
-  if (body instanceof FormData) {
-    // Browser akan mengatur multipart boundary secara otomatis.
-  } else if (body !== undefined) {
+  if (body !== undefined && !(body instanceof FormData)) {
     requestHeaders['Content-Type'] = 'application/json';
     requestBody = JSON.stringify(body);
   }
