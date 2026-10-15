@@ -1,3 +1,4 @@
+
 import { defineConfig } from 'vitest/config';
 import { loadEnv } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
@@ -35,13 +36,19 @@ export default defineConfig(({ mode }) => {
 
       coverage: {
         provider: 'v8',
+
         include: ['src/**/*.js'],
+
         exclude: [
           'src/main.js',
           'src/setupTests.js',
           'src/**/*.test.js',
         ],
 
+        // Laporan untuk terminal, HTML, dan SonarQube.
+        reporter: ['text', 'html', 'lcov'],
+
+        // Pertahankan target coverage yang sudah ada.
         thresholds: {
           statements: 100,
           branches: 100,
