@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -12,7 +11,7 @@ pipeline {
                     export PATH="$BUN_INSTALL/bin:$PATH"
 
                     if ! command -v bun >/dev/null 2>&1; then
-                        curl -fsSL https://bun.sh/install | bash
+                        curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.2"
                     fi
 
                     bun --version
@@ -28,7 +27,7 @@ pipeline {
                     export BUN_INSTALL="$HOME/.bun"
                     export PATH="$BUN_INSTALL/bin:$PATH"
 
-                    bun install
+                    bun install --frozen-lockfile
                 '''
             }
         }
