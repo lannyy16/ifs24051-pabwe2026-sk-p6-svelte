@@ -14,7 +14,14 @@ pipeline {
                         curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.2"
                     fi
 
+                    echo "Bun version:"
                     bun --version
+
+                    echo "Node.js version:"
+                    node --version
+
+                    echo "npm version:"
+                    npm --version
                 '''
             }
         }
@@ -32,28 +39,27 @@ pipeline {
             }
         }
 
-        
-stage('Run Tests') {
-    steps {
-        sh '''
-            set -eu
-            node --version
-            node ./node_modules/vitest/vitest.mjs run
-        '''
-    }
-}
+        stage('Run Tests') {
+            steps {
+                sh '''
+                    set -eu
 
-        
-stage('Build') {
-    steps {
-        sh '''
-            set -eu
-            node --version
-            node ./node_modules/vite/bin/vite.js build
-        '''
-    }
-}
+                    echo "Running Vitest with Node.js..."
+                    node ./node_modules/vitest/vitest.mjs run
+                '''
+            }
+        }
 
+        stage('Build') {
+            steps {
+                sh '''
+                    set -eu
+
+                    echo "Building Svelte application with Vite..."
+                    node ./node_modules/vite/bin/vite.js build
+                '''
+            }
+        }
 
         stage('SonarQube Analysis') {
             steps {
