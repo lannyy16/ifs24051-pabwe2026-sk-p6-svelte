@@ -13,8 +13,8 @@
   let password = $state('');
   let busy = $state(false);
 
-  async function submit(e) {
-    e.preventDefault();
+  async function submit(event) {
+    event.preventDefault();
 
     if (!isValidEmail(email) || !password) {
       await showErrorDialog(
@@ -27,7 +27,8 @@
 
     try {
       const result = await loginApi(email, password);
-      const data = result.data || {};
+      const data = result?.data || {};
+
       const token =
         data.token ||
         data.access_token ||
@@ -42,77 +43,102 @@
       saveSession(token, data.user || null);
       navigate('/');
     } catch (error) {
-      await showErrorDialog(error.message);
+      await showErrorDialog(
+        error?.message || 'Login gagal. Silakan coba lagi.',
+      );
     } finally {
       busy = false;
     }
   }
 </script>
 
-<div class="mb-6 flex items-center gap-3 md:hidden">
-  <img src="/logo.svg" alt="" class="h-10 w-10" />
-  <h1 class="text-xl font-extrabold">Delcom Link Tree</h1>
-</div>
-
-<div class="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700">
-  <Link2 size={25} />
-</div>
-
-<h2 class="text-2xl font-extrabold">
-  Selamat datang kembali
-</h2>
-
-<p class="mb-6 mt-2 text-sm text-slate-500">
-  Masuk untuk mengelola kumpulan tautanmu.
-</p>
-
-<form onsubmit={submit} class="space-y-4">
-  <label for="login-email-input" class="block text-sm font-bold">
-    Email
-    <input
-      id="login-email-input"
-      class="field mt-2"
-      type="email"
-      bind:value={email}
-      placeholder="nama@email.com"
-      autocomplete="email"
-      required
+<main class="w-full" aria-labelledby="login-title">
+  <div class="mb-6 flex items-center gap-3 md:hidden">
+    <img
+      src="/logo.svg"
+      alt="Logo Delcom Link Tree"
+      class="h-10 w-10"
     />
-  </label>
+    <span class="text-xl font-extrabold">
+      Delcom Link Tree
+    </span>
+  </div>
 
-  <label for="login-password-input" class="block text-sm font-bold">
-    Kata sandi
-    <input
-      id="login-password-input"
-      class="field mt-2"
-      type="password"
-      bind:value={password}
-      placeholder="Masukkan kata sandi"
-      autocomplete="current-password"
-      required
-    />
-  </label>
-
-  <button
-    id="login-submit-button"
-    class="btn btn-primary w-full"
-    type="submit"
-    disabled={busy}
+  <div
+    class="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700"
+    aria-hidden="true"
   >
-    {busy ? 'Memproses...' : 'Masuk'}
-  </button>
-</form>
+    <Link2 size={25} />
+  </div>
 
-<p class="mt-6 text-center text-sm text-slate-500">
-  Belum punya akun?
-  <a
-    class="font-bold text-indigo-600"
-    href="/auth/register"
-    onclick={(e) => {
-      e.preventDefault();
-      navigate('/auth/register');
-    }}
-  >
-    Daftar sekarang
-  </a>
-</p>
+  <h1 id="login-title" class="text-2xl font-extrabold">
+    Selamat datang kembali
+  </h1>
+
+  <p class="mb-6 mt-2 text-sm text-slate-600">
+    Masuk untuk mengelola kumpulan tautanmu.
+  </p>
+
+  <form onsubmit={submit} class="space-y-4">
+    <div>
+      <label
+        for="login-email-input"
+        class="block text-sm font-bold"
+      >
+        Email
+      </label>
+
+      <input
+        id="login-email-input"
+        class="field mt-2 w-full"
+        type="email"
+        bind:value={email}
+        placeholder="nama@email.com"
+        autocomplete="email"
+        required
+      />
+    </div>
+
+    <div>
+      <label
+        for="login-password-input"
+        class="block text-sm font-bold"
+      >
+        Kata sandi
+      </label>
+
+      <input
+        id="login-password-input"
+        class="field mt-2 w-full"
+        type="password"
+        bind:value={password}
+        placeholder="Masukkan kata sandi"
+        autocomplete="current-password"
+        required
+      />
+    </div>
+
+    <button
+      id="login-submit-button"
+      class="btn btn-primary w-full"
+      type="submit"
+      disabled={busy}
+    >
+      {busy ? 'Memproses...' : 'Masuk'}
+    </button>
+  </form>
+
+  <p class="mt-6 text-center text-sm text-slate-600">
+    Belum punya akun?
+    <a
+      class="font-bold text-indigo-700"
+      href="/auth/register"
+      onclick={(event) => {
+        event.preventDefault();
+        navigate('/auth/register');
+      }}
+    >
+      Daftar sekarang
+    </a>
+  </p>
+</main>
